@@ -2,170 +2,20 @@
 "use client";
 
 import type { ComponentPropsWithoutRef } from 'react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, ArrowDown, RotateCcw, RotateCw, HandMetal, Gamepad2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { HandMetal, Gamepad2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { useIsMobile } from "@/hooks/use-mobile";
 import type { ControlAction } from '@/types/rover';
-import Joystick from './Joystick';
-
-interface ControlButtonProps extends ComponentPropsWithoutRef<typeof Button> {
-  action: ControlAction;
-  icon: React.ElementType;
-  label: string;
-  onAction: (action: ControlAction, label: string) => void; // Speed is not relevant for buttons
-}
-
-const ControlButton = ({ action, icon: Icon, label, className, onAction, ...props }: ControlButtonProps) => {
-  const handleClick = () => {
-    onAction(action, label);
-  };
-
-  return (
-    <Button
-      variant="default"
-      className={cn(
-        "flex flex-col items-center justify-center h-20 w-20 md:h-24 md:w-24 p-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 hover:brightness-110",
-        className
-      )}
-      onClick={handleClick}
-      aria-label={label}
-      {...props}
-    >
-      <Icon className="h-8 w-8 md:h-10 md:w-10 mb-1" />
-      <span className="text-xs md:text-sm">{label}</span>
-    </Button>
-  );
-};
-
-interface DesktopControlsProps {
-  sendRoverCommand: (action: ControlAction, label: string) => void;
-}
-
-const DesktopControls: React.FC<DesktopControlsProps> = ({ sendRoverCommand }) => {
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      let action: ControlAction | null = null;
-      let label: string | null = null;
-
-      switch (event.key) {
-        case "ArrowUp":
-        case "w":
-        case "W":
-          action = "forward";
-          label = "Forward";
-          break;
-        case "ArrowDown":
-        case "s":
-        case "S":
-          action = "backward";
-          label = "Backward";
-          break;
-        case "ArrowLeft":
-        case "a":
-        case "A":
-          action = "turn_left";
-          label = "Turn Left";
-          break;
-        case "ArrowRight":
-        case "d":
-        case "D":
-          action = "turn_right";
-          label = "Turn Right";
-          break;
-        case " ": // Space bar
-          action = "stop_all";
-          label = "Stop All";
-          break;
-      }
-
-      if (action && label) {
-        event.preventDefault();
-        sendRoverCommand(action, label);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [sendRoverCommand]);
-
-  return (
-    <div className="grid grid-cols-3 gap-3 md:gap-4 justify-items-center items-center">
-      <div />
-      <ControlButton action="forward" icon={ArrowUp} label="Forward" onAction={sendRoverCommand} />
-      <div />
-
-      <ControlButton action="turn_left" icon={RotateCcw} label="Turn Left" onAction={sendRoverCommand} className="bg-secondary hover:bg-secondary/90 text-secondary-foreground" />
-      <ControlButton action="stop_all" icon={HandMetal} label="Stop" onAction={sendRoverCommand} variant="destructive" className="h-24 w-24 md:h-28 md:w-28" />
-      <ControlButton action="turn_right" icon={RotateCw} label="Turn Right" onAction={sendRoverCommand} className="bg-secondary hover:bg-secondary/90 text-secondary-foreground" />
-
-      <div />
-      <ControlButton action="backward" icon={ArrowDown} label="Backward" onAction={sendRoverCommand} />
-      <div />
-    </div>
-  );
-};
-
-interface MobileControlsProps {
-  sendRoverCommand: (action: ControlAction, label: string, speed?: number) => void;
-}
-
-const MobileControls: React.FC<MobileControlsProps> = ({ sendRoverCommand }) => {
-  const handleJoystickCommand = useCallback((motorSide: "left" | "right", direction: 'forward' | 'backward' | 'stop', speed: number) => {
-    let action: ControlAction;
-    let label: string;
-    const motorName = motorSide.charAt(0).toUpperCase() + motorSide.slice(1);
-
-    if (direction === 'forward') {
-      action = motorSide === 'left' ? 'left_motor_forward' : 'right_motor_forward';
-      label = `${motorName} Motor Forward`;
-    } else if (direction === 'backward') {
-      action = motorSide === 'left' ? 'left_motor_backward' : 'right_motor_backward';
-      label = `${motorName} Motor Backward`;
-    } else { // direction === 'stop'
-      action = motorSide === 'left' ? 'left_motor_stop' : 'right_motor_stop';
-      label = `${motorName} Motor Stop`;
-    }
-    sendRoverCommand(action, label, speed);
-  }, [sendRoverCommand]);
-
-  return (
-    <div className="flex flex-col items-center w-full space-y-4">
-      <Alert>
-        <Gamepad2 className="h-4 w-4" />
-        <AlertTitle>Joystick Controls</AlertTitle>
-        <AlertDescription>
-          Use joysticks for left/right motors. Speed is variable. Press Stop for all motors.
-        </AlertDescription>
-      </Alert>
-      <div className="flex justify-around w-full max-w-xs items-center px-2">
-        <Joystick motorSide="left" onCommand={(dir, spd) => handleJoystickCommand("left", dir, spd)} />
-        <Joystick motorSide="right" onCommand={(dir, spd) => handleJoystickCommand("right", dir, spd)} />
-      </div>
-      <Button
-          variant="destructive"
-          className="h-16 w-32 p-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 hover:brightness-110 flex flex-col items-center justify-center mt-4"
-          onClick={() => sendRoverCommand("stop_all", "Stop All Motors")} // Speed is not applicable for stop_all from button
-          aria-label="Stop All Motors"
-        >
-          <HandMetal className="h-6 w-6 mb-1" />
-          <span className="text-xs">Stop All</span>
-      </Button>
-    </div>
-  );
-};
 
 
 export default function ControlPanel() {
-  const isMobile = useIsMobile();
   const { toast } = useToast();
+  const [leftMotorSpeed, setLeftMotorSpeed] = useState(0);
+  const [rightMotorSpeed, setRightMotorSpeed] = useState(0);
 
   const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
     // Log the command with speed if available
@@ -181,21 +31,34 @@ export default function ControlPanel() {
     });
   }, [toast]);
 
-  if (isMobile === undefined) {
-    return (
-      <Card className="shadow-xl rounded-lg">
-        <CardHeader className="bg-card/50 border-b border-border">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Gamepad2 className="h-6 w-6 text-primary" />
-            Control Panel
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4 py-6">
-          <Skeleton className="h-48 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleMotorSliderChange = (motor: 'left' | 'right', newValue: number) => {
+    let action: ControlAction;
+    const motorName = motor.charAt(0).toUpperCase() + motor.slice(1);
+    const currentSpeed = Math.round(newValue); // Ensure integer value
+
+    if (currentSpeed > 0) {
+      action = motor === 'left' ? 'left_motor_forward' : 'right_motor_forward';
+    } else if (currentSpeed < 0) {
+      action = motor === 'left' ? 'left_motor_backward' : 'right_motor_backward';
+    } else {
+      action = motor === 'left' ? 'left_motor_stop' : 'right_motor_stop';
+    }
+
+    if (motor === 'left') {
+      setLeftMotorSpeed(currentSpeed);
+    } else {
+      setRightMotorSpeed(currentSpeed);
+    }
+    sendRoverCommand(action, `${motorName} Motor: ${currentSpeed}%`, Math.abs(currentSpeed));
+  };
+
+  const handleStopAll = () => {
+    sendRoverCommand("stop_all", "Stop All Motors");
+    setLeftMotorSpeed(0);
+    setRightMotorSpeed(0);
+    // The slider components will re-render with these new values.
+  };
+
 
   return (
     <Card className="shadow-xl rounded-lg">
@@ -205,15 +68,51 @@ export default function ControlPanel() {
           Control Panel
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center gap-4 py-6">
-        {isMobile ? (
-          <MobileControls sendRoverCommand={sendRoverCommand} />
-        ) : (
-          // Desktop controls don't use the speed parameter directly from buttons
-          <DesktopControls sendRoverCommand={(act, lbl) => sendRoverCommand(act, lbl)} />
-        )}
+      <CardContent className="flex flex-col items-center gap-8 py-6 px-4 md:px-6"> {/* Increased gap & padding */}
+        {/* Left Motor Slider */}
+        <div className="w-full max-w-xs space-y-3">
+          <Label htmlFor="left-motor-slider" className="text-center block font-medium text-lg">
+            Left Motor: {leftMotorSpeed}%
+          </Label>
+          <Slider
+            id="left-motor-slider"
+            min={-100}
+            max={100}
+            step={10} // Step by 10 for distinct speed levels
+            value={[leftMotorSpeed]}
+            onValueChange={(value) => handleMotorSliderChange('left', value[0])}
+            className="w-full [&>span:first-child]:h-3 [&>span>span]:h-3 [&>span>span]:bg-primary [&>span:last-child]:h-6 [&>span:last-child]:w-6 [&>span:last-child]:border-2"
+            aria-label="Left motor speed control"
+          />
+        </div>
+
+        {/* Right Motor Slider */}
+        <div className="w-full max-w-xs space-y-3">
+          <Label htmlFor="right-motor-slider" className="text-center block font-medium text-lg">
+            Right Motor: {rightMotorSpeed}%
+          </Label>
+          <Slider
+            id="right-motor-slider"
+            min={-100}
+            max={100}
+            step={10} // Step by 10 for distinct speed levels
+            value={[rightMotorSpeed]}
+            onValueChange={(value) => handleMotorSliderChange('right', value[0])}
+            className="w-full [&>span:first-child]:h-3 [&>span>span]:h-3 [&>span>span]:bg-primary [&>span:last-child]:h-6 [&>span:last-child]:w-6 [&>span:last-child]:border-2"
+            aria-label="Right motor speed control"
+          />
+        </div>
+
+        <Button
+          variant="destructive"
+          className="h-16 w-40 p-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 hover:brightness-110 flex flex-col items-center justify-center mt-4 text-base"
+          onClick={handleStopAll}
+          aria-label="Stop All Motors"
+        >
+          <HandMetal className="h-7 w-7 mb-1" />
+          <span>Stop All</span>
+        </Button>
       </CardContent>
     </Card>
   );
 }
-
