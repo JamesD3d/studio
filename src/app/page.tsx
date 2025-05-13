@@ -1,6 +1,6 @@
 import Header from "@/components/layout/Header";
-import LiveVideoStream from "@/components/rover-cam/LiveVideoStream";
 import ControlPanel from "@/components/rover-cam/ControlPanel";
+import LiveVideoStream from "@/components/rover-cam/LiveVideoStream";
 
 export default function RoverCamPage() {
   return (
