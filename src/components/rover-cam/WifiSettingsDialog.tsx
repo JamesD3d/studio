@@ -145,7 +145,7 @@ export default function WifiSettingsDialog() {
           <span className="sr-only">Wi-Fi Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md opacity-100">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wifi className="h-6 w-6 text-primary" />
