@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChangeEvent, FormEvent } from 'react';
@@ -145,7 +144,7 @@ export default function WifiSettingsDialog() {
           <span className="sr-only">Wi-Fi Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md opacity-100">
+      <DialogContent className="sm:max-w-md opacity-100 bg-background">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wifi className="h-6 w-6 text-primary" />
@@ -165,7 +164,7 @@ export default function WifiSettingsDialog() {
             <RadioGroupItem value="sta" id="sta" className="peer sr-only" />
             <Label
               htmlFor="sta"
-              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&amp;:has([data-state=checked])]:border-primary cursor-pointer"
             >
               Join Network
             </Label>
@@ -174,7 +173,7 @@ export default function WifiSettingsDialog() {
             <RadioGroupItem value="ap" id="ap" className="peer sr-only" />
             <Label
               htmlFor="ap"
-              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+              className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&amp;:has([data-state=checked])]:border-primary cursor-pointer"
             >
               Create Hotspot
             </Label>
