@@ -1,6 +1,7 @@
-import { Rocket } from 'lucide-react';
+import { Rocket, Cog } from 'lucide-react'; // Changed Wifi to Cog for MotorPinConfig
 import WifiSettingsDialog from '@/components/wifi/WifiSettingsDialog';
 import ThemeToggle from '@/components/layout/ThemeToggle';
+import MotorPinConfigDialog from '@/components/motor-pin-config/MotorPinConfigDialog'; // Import the new dialog
 
 export default function Header() {
   return (
@@ -12,6 +13,7 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-2">
           <WifiSettingsDialog />
+          <MotorPinConfigDialog /> {/* Add the new dialog trigger */}
           <ThemeToggle />
         </div>
       </div>
