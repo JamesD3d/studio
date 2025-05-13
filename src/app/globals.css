@@ -14,7 +14,7 @@ body {
     --card: hsl(0 0% 20%); 
     --card-foreground: hsl(0 0% 86.7%); 
 
-    --popover: hsl(0 0% 15%); 
+    --popover: hsl(0 0% 20%); /* Changed from 15% to 20% */
     --popover-foreground: hsl(0 0% 86.7%); 
 
     --primary: hsl(180 100% 25.1%); 
