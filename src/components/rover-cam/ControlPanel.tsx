@@ -134,12 +134,12 @@ export default function ControlPanel() {
 
   const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
     console.log(`Rover action: ${action} (${label})${speed !== undefined ? ` - Speed: ${speed}%` : ''}`);
-    toast({ 
-      title: "Rover Control",
-      description: `Command: ${label}${speed !== undefined ? ` (Speed: ${Math.round(speed)}%)` : ''}`,
-      duration: 1500,
-    });
-  }, [toast]);
+    // toast({ 
+    //   title: "Rover Control",
+    //   description: `Command: ${label}${speed !== undefined ? ` (Speed: ${Math.round(speed)}%)` : ''}`,
+    //   duration: 1500,
+    // });
+  }, []);
 
   // Mobile Joystick Handlers
   const handleMotorMove = (motor: 'left' | 'right', joystickY: number) => {
@@ -369,3 +369,5 @@ export default function ControlPanel() {
     </Card>
   );
 }
+
+    
