@@ -1,16 +1,15 @@
 "use client";
 
-import type { ComponentPropsWithoutRef, KeyboardEvent } from 'react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, ArrowDown, RotateCcw, RotateCw, HandMetal, Gamepad2, MoveVertical, RotateCcwSquare, MoveHorizontal } from 'lucide-react';
+import { ArrowUp, ArrowDown, RotateCcw, RotateCw, HandMetal, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import Joystick from './Joystick'; // New component
 
 type ControlAction = "forward" | "backward" | "turn_left" | "turn_right" | "stop";
 
@@ -114,66 +113,28 @@ const DesktopControls: React.FC<ControlsProps> = ({ sendRoverCommand }) => {
 };
 
 const MobileControls: React.FC<ControlsProps> = ({ sendRoverCommand }) => {
-  const [movementAction, setMovementAction] = useState<ControlAction | null>(null);
-  const [turningAction, setTurningAction] = useState<ControlAction | null>(null);
-
-  const handleMovementJoystick = (dx: number, dy: number) => {
-    let currentAction: ControlAction | null = null;
-    if (dy < -0.3) { // Stick moved up
-      currentAction = "forward";
-    } else if (dy > 0.3) { // Stick moved down
-      currentAction = "backward";
-    }
-    
-    if (currentAction && currentAction !== movementAction) {
-      sendRoverCommand(currentAction, currentAction.charAt(0).toUpperCase() + currentAction.slice(1));
-      setMovementAction(currentAction);
-    } else if (!currentAction && movementAction) {
-        // If stick returns to center implicitly, we might want to send stop, handled by onStop
-    }
-  };
-
-  const handleTurningJoystick = (dx: number, dy: number) => {
-    let currentAction: ControlAction | null = null;
-    if (dx < -0.3) { // Stick moved left
-      currentAction = "turn_left";
-    } else if (dx > 0.3) { // Stick moved right
-      currentAction = "turn_right";
-    }
-
-    if (currentAction && currentAction !== turningAction) {
-      sendRoverCommand(currentAction, currentAction.charAt(0).toUpperCase() + currentAction.slice(1));
-      setTurningAction(currentAction);
-    } else if (!currentAction && turningAction) {
-       // If stick returns to center implicitly, we might want to send stop, handled by onStop
-    }
-  };
-  
-  const handleJoystickStop = () => {
-    sendRoverCommand("stop", "Stop");
-    setMovementAction(null);
-    setTurningAction(null);
-  };
-
+  // Mobile controls will now use buttons, similar to desktop but perhaps with a different layout
   return (
     <div className="flex flex-col items-center w-full space-y-6">
       <Alert>
         <Gamepad2 className="h-4 w-4" />
-        <AlertTitle>Joystick Controls</AlertTitle>
+        <AlertTitle>Button Controls</AlertTitle>
         <AlertDescription>
-          Use the left joystick for forward/backward movement and the right joystick for turning. Release to stop.
+          Tap the buttons to control the rover.
         </AlertDescription>
       </Alert>
-      <div className="flex justify-around items-center w-full h-40">
-        <div className="flex flex-col items-center">
-            <Joystick size={120} stickSize={60} onMove={handleMovementJoystick} onStop={handleJoystickStop} />
-            <p className="mt-2 text-sm text-muted-foreground">Movement</p>
-        </div>
-        <ControlButton action="stop" icon={HandMetal} label="Stop" onAction={sendRoverCommand} variant="destructive" className="h-24 w-24" />
-        <div className="flex flex-col items-center">
-            <Joystick size={120} stickSize={60} onMove={handleTurningJoystick} onStop={handleJoystickStop} />
-            <p className="mt-2 text-sm text-muted-foreground">Turning</p>
-        </div>
+      <div className="grid grid-cols-3 gap-3 justify-items-center items-center w-full max-w-xs">
+        <div />
+        <ControlButton action="forward" icon={ArrowUp} label="Forward" onAction={sendRoverCommand} className="h-16 w-16" />
+        <div />
+
+        <ControlButton action="turn_left" icon={RotateCcw} label="L" onAction={sendRoverCommand} className="bg-secondary hover:bg-secondary/90 text-secondary-foreground h-16 w-16" />
+        <ControlButton action="stop" icon={HandMetal} label="Stop" onAction={sendRoverCommand} variant="destructive" className="h-20 w-20" />
+        <ControlButton action="turn_right" icon={RotateCw} label="R" onAction={sendRoverCommand} className="bg-secondary hover:bg-secondary/90 text-secondary-foreground h-16 w-16" />
+
+        <div />
+        <ControlButton action="backward" icon={ArrowDown} label="Backward" onAction={sendRoverCommand} className="h-16 w-16"/>
+        <div />
       </div>
     </div>
   );
