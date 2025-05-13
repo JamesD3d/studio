@@ -1,19 +1,26 @@
-import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+"use client";
+import { useState, useEffect, useCallback } from "react";
+
+const MOBILE_BREAKPOINT = 768; // Standard tablet breakpoint (md in Tailwind)
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = useState<boolean | undefined>(undefined);
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+  const checkDevice = useCallback(() => {
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+  }, []);
 
-  return !!isMobile
+  useEffect(() => {
+    // Initial check
+    checkDevice();
+
+    // Listen for resize events
+    window.addEventListener("resize", checkDevice);
+
+    // Cleanup listener
+    return () => window.removeEventListener("resize", checkDevice);
+  }, [checkDevice]);
+
+  return isMobile;
 }

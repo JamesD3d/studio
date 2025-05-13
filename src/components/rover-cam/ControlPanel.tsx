@@ -1,16 +1,17 @@
 
 "use client";
 
-import type { ComponentPropsWithoutRef, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
+import type { ComponentPropsWithoutRef, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent, KeyboardEvent } from 'react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { HandMetal, Gamepad2, MoveVertical } from 'lucide-react';
+import { HandMetal, Gamepad2, MoveVertical, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import type { ControlAction } from '@/types/rover';
 import { cn } from '@/lib/utils';
-
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface JoystickProps {
   onMove: (y: number) => void; // y is -1 (full backward) to 1 (full forward)
@@ -41,21 +42,12 @@ const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSp
     if (!bounds || !knobRef.current) return;
 
     let relativeY = clientY - bounds.top;
-    // Normalize y: -1 for top of track, 0 for center, 1 for bottom of track (DOM coordinates)
     let y = (relativeY / bounds.height) * 2 - 1; 
-    y = Math.max(-1, Math.min(1, y)); // Clamp
+    y = Math.max(-1, Math.min(1, y)); 
 
-    // User wants up (DOM top, y = -1) to be positive speed (forward = 1 for onMove)
-    // User wants down (DOM bottom, y = 1) to be negative speed (reverse = -1 for onMove)
-    // So, invertedY = -y maps DOM coordinates to desired speed direction.
     const invertedY = -y; 
     onMove(invertedY);
 
-    // Position knob:
-    // If y = -1 (DOM top, forward), knob style.top should be 0%.
-    // If y = 1 (DOM bottom, reverse), knob style.top should be 100%.
-    // If y = 0 (DOM center, stop), knob style.top should be 50%.
-    // Formula: (y + 1) / 2 * 100%
     knobRef.current.style.top = `${(y + 1) / 2 * 100}%`;
 
   }, [getTrackBounds, onMove]);
@@ -71,39 +63,37 @@ const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSp
     setIsDragging(false);
     onRelease();
     if (knobRef.current) {
-      knobRef.current.style.top = '50%'; // Reset to center
+      knobRef.current.style.top = '50%'; 
     }
   };
 
-  // Mouse events
-  const onMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => handleInteractionStart(e.clientY);
-  const onMouseMove = (e: MouseEvent) => handleInteractionMove(e.clientY);
-  const onMouseUp = () => handleInteractionEnd();
+  const onMouseDownJoystick = (e: ReactMouseEvent<HTMLDivElement>) => handleInteractionStart(e.clientY);
+  const onMouseMoveDocument = (e: MouseEvent) => handleInteractionMove(e.clientY);
+  const onMouseUpDocument = () => handleInteractionEnd();
 
-  // Touch events
-  const onTouchStart = (e: ReactTouchEvent<HTMLDivElement>) => handleInteractionStart(e.touches[0].clientY);
-  const onTouchMove = (e: TouchEvent) => handleInteractionMove(e.touches[0].clientY);
-  const onTouchEnd = () => handleInteractionEnd();
+  const onTouchStartJoystick = (e: ReactTouchEvent<HTMLDivElement>) => handleInteractionStart(e.touches[0].clientY);
+  const onTouchMoveDocument = (e: TouchEvent) => handleInteractionMove(e.touches[0].clientY);
+  const onTouchEndDocument = () => handleInteractionEnd();
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-      document.addEventListener('touchmove', onTouchMove);
-      document.addEventListener('touchend', onTouchEnd);
+      document.addEventListener('mousemove', onMouseMoveDocument);
+      document.addEventListener('mouseup', onMouseUpDocument);
+      document.addEventListener('touchmove', onTouchMoveDocument, { passive: false });
+      document.addEventListener('touchend', onTouchEndDocument);
     } else {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('mousemove', onMouseMoveDocument);
+      document.removeEventListener('mouseup', onMouseUpDocument);
+      document.removeEventListener('touchmove', onTouchMoveDocument);
+      document.removeEventListener('touchend', onTouchEndDocument);
     }
     return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.removeEventListener('touchmove', onTouchMove);
-      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('mousemove', onMouseMoveDocument);
+      document.removeEventListener('mouseup', onMouseUpDocument);
+      document.removeEventListener('touchmove', onTouchMoveDocument);
+      document.removeEventListener('touchend', onTouchEndDocument);
     };
-  }, [isDragging, onMouseMove, onMouseUp, onTouchMove, onTouchEnd]);
+  }, [isDragging, onMouseMoveDocument, onMouseUpDocument, onTouchMoveDocument, onTouchEndDocument]);
 
 
   return (
@@ -115,13 +105,13 @@ const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSp
         ref={trackRef}
         id={`joystick-${label.toLowerCase().replace(' ', '-')}`}
         className="relative w-12 h-48 bg-muted rounded-full cursor-grab active:cursor-grabbing select-none touch-none shadow-inner"
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
+        onMouseDown={onMouseDownJoystick}
+        onTouchStart={onTouchStartJoystick}
       >
         <div
           ref={knobRef}
           className="absolute w-10 h-10 bg-primary rounded-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-md border-2 border-primary-foreground/50"
-          style={{ top: '50%' }} // Start at center
+          style={{ top: '50%' }} 
         >
             <MoveVertical className="w-full h-full p-2 text-primary-foreground" />
         </div>
@@ -133,20 +123,22 @@ const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSp
 
 export default function ControlPanel() {
   const { toast } = useToast();
-  const [leftMotorSpeed, setLeftMotorSpeed] = useState(0); // -100 to 100
-  const [rightMotorSpeed, setRightMotorSpeed] = useState(0); // -100 to 100
+  const isMobile = useIsMobile();
+  const [leftMotorSpeed, setLeftMotorSpeed] = useState(0); 
+  const [rightMotorSpeed, setRightMotorSpeed] = useState(0);
+  const [activeDesktopCommand, setActiveDesktopCommand] = useState<ControlAction | null>(null);
 
   const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
     console.log(`Rover action: ${action} (${label})${speed !== undefined ? ` - Speed: ${speed}%` : ''}`);
-    // toast({
+    // toast({ // Keeping this commented as per previous request
     //   title: "Rover Control",
     //   description: `Command: ${label}${speed !== undefined ? ` (Speed: ${Math.round(speed)}%)` : ''}`,
     //   duration: 1500,
     // });
-  }, [toast]);
+  }, []);
 
+  // Mobile Joystick Handlers
   const handleMotorMove = (motor: 'left' | 'right', joystickY: number) => {
-    // joystickY is already -1 (full backward) to 1 (full forward)
     const speedPercent = Math.round(joystickY * 100);
     let action: ControlAction;
     const motorLabel = motor === 'left' ? 'L' : 'R';
@@ -159,34 +151,208 @@ export default function ControlPanel() {
       action = motor === 'left' ? 'left_motor_stop' : 'right_motor_stop';
     }
 
-    if (motor === 'left') {
-      setLeftMotorSpeed(speedPercent);
-    } else {
-      setRightMotorSpeed(speedPercent);
-    }
-    // Pass the actual speedPercent (which can be negative) to the command
-    sendRoverCommand(action, `${motorLabel} Motor: ${speedPercent}%`, speedPercent);
+    if (motor === 'left') setLeftMotorSpeed(speedPercent);
+    else setRightMotorSpeed(speedPercent);
+    
+    sendRoverCommand(action, `${motorLabel} Motor: ${speedPercent > 0 ? 'Fwd' : speedPercent < 0 ? 'Bwd' : 'Stop'} ${Math.abs(speedPercent)}%`, speedPercent);
   };
 
   const handleMotorRelease = (motor: 'left' | 'right') => {
     const motorLabel = motor === 'left' ? 'L' : 'R';
     const action: ControlAction = motor === 'left' ? 'left_motor_stop' : 'right_motor_stop';
     
-    if (motor === 'left') {
-      setLeftMotorSpeed(0);
-    } else {
-      setRightMotorSpeed(0);
-    }
+    if (motor === 'left') setLeftMotorSpeed(0);
+    else setRightMotorSpeed(0);
+
     sendRoverCommand(action, `${motorLabel} Motor Stop`);
   };
 
+  // Desktop Button/Key Handlers
+  const handleDesktopActionStart = (action: ControlAction, label: string) => {
+    if (activeDesktopCommand === action) return; // Prevent re-sending if already active
+    sendRoverCommand(action, label);
+    setActiveDesktopCommand(action);
+  };
+
+  const handleDesktopActionEnd = () => {
+    if (activeDesktopCommand === null && (leftMotorSpeed !== 0 || rightMotorSpeed !==0) && !isMobile ) {
+      // This case might occur if stop_all was triggered by keyup, but a button was also pressed
+      // and then released. Ensure motors are actually stopped.
+       sendRoverCommand("stop_all", "Stop All (Release)");
+    } else if (activeDesktopCommand !== null){
+       sendRoverCommand("stop_all", "Stop All (Release)");
+    }
+    setActiveDesktopCommand(null);
+    setLeftMotorSpeed(0); // Reset visual indicators if any
+    setRightMotorSpeed(0);
+  };
+  
   const handleStopAll = () => {
     sendRoverCommand("stop_all", "Stop All Motors");
     setLeftMotorSpeed(0);
     setRightMotorSpeed(0);
-    // Joysticks will visually reset via their onRelease calling and setting knob style
+    setActiveDesktopCommand(null);
+    // Joysticks will visually reset via their onRelease calling and setting knob style if they are active
   };
 
+  useEffect(() => {
+    if (isMobile === false) { // Only add listeners if on desktop
+      const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+        if (event.repeat) return; // Ignore repeated events from holding key
+        let action: ControlAction | null = null;
+        let label: string | null = null;
+
+        switch (event.key.toLowerCase()) {
+          case 'w': case 'arrowup': action = 'forward'; label = 'Forward'; break;
+          case 's': case 'arrowdown': action = 'backward'; label = 'Backward'; break;
+          case 'a': case 'arrowleft': action = 'turn_left'; label = 'Turn Left'; break;
+          case 'd': case 'arrowright': action = 'turn_right'; label = 'Turn Right'; break;
+        }
+
+        if (action && label) {
+          event.preventDefault();
+          handleDesktopActionStart(action, label);
+        }
+      };
+
+      const handleKeyUp = (event: globalThis.KeyboardEvent) => {
+        const keyMap: Record<string, ControlAction> = {
+          'w': 'forward', 'arrowup': 'forward',
+          's': 'backward', 'arrowdown': 'backward',
+          'a': 'turn_left', 'arrowleft': 'turn_left',
+          'd': 'turn_right', 'arrowright': 'turn_right',
+        };
+        if (keyMap[event.key.toLowerCase()] && activeDesktopCommand) {
+           event.preventDefault();
+           handleDesktopActionEnd();
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+         // Ensure motors stop if component unmounts or view changes while a key was pressed
+        if(activeDesktopCommand) {
+            sendRoverCommand("stop_all", "Stop All (Cleanup)");
+        }
+      };
+    }
+  }, [isMobile, sendRoverCommand, activeDesktopCommand, handleDesktopActionStart, handleDesktopActionEnd]);
+
+
+  const renderControls = () => {
+    if (isMobile === undefined) {
+      return (
+        <div className="flex flex-col items-center gap-4 p-8">
+          <Skeleton className="h-8 w-3/4" />
+          <div className="flex w-full justify-around items-start gap-4">
+            <Skeleton className="w-12 h-48 rounded-full" />
+            <Skeleton className="w-12 h-48 rounded-full" />
+          </div>
+          <Skeleton className="h-16 w-40" />
+        </div>
+      );
+    }
+
+    if (isMobile) {
+      return (
+        <>
+          <div className="flex w-full justify-around items-start gap-4">
+            <Joystick
+              label="L"
+              onMove={(y) => handleMotorMove('left', y)}
+              onRelease={() => handleMotorRelease('left')}
+              currentSpeed={leftMotorSpeed}
+            />
+            <Joystick
+              label="R"
+              onMove={(y) => handleMotorMove('right', y)}
+              onRelease={() => handleMotorRelease('right')}
+              currentSpeed={rightMotorSpeed}
+            />
+          </div>
+           <Button
+            variant="destructive"
+            className="h-16 w-40 p-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 hover:brightness-110 flex flex-col items-center justify-center mt-4 text-base"
+            onClick={handleStopAll}
+            aria-label="Stop All Motors"
+          >
+            <HandMetal className="h-7 w-7 mb-1" />
+            <span>Stop All</span>
+          </Button>
+        </>
+      );
+    }
+
+    // Desktop Controls
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <p className="text-sm text-muted-foreground">Use WASD or Arrow Keys to control</p>
+        <div className="grid grid-cols-3 gap-2 w-48">
+          <div /> {/* Placeholder for top-left */}
+          <Button
+            variant="outline"
+            className="h-16 w-16 shadow-md hover:shadow-lg"
+            onMouseDown={() => handleDesktopActionStart('forward', 'Forward (Button)')}
+            onMouseUp={handleDesktopActionEnd}
+            onTouchStart={() => handleDesktopActionStart('forward', 'Forward (Button)')}
+            onTouchEnd={handleDesktopActionEnd}
+            aria-label="Move Forward"
+          >
+            <ArrowUp className="h-8 w-8" />
+          </Button>
+          <div /> {/* Placeholder for top-right */}
+
+          <Button
+            variant="outline"
+            className="h-16 w-16 shadow-md hover:shadow-lg"
+            onMouseDown={() => handleDesktopActionStart('turn_left', 'Turn Left (Button)')}
+            onMouseUp={handleDesktopActionEnd}
+            onTouchStart={() => handleDesktopActionStart('turn_left', 'Turn Left (Button)')}
+            onTouchEnd={handleDesktopActionEnd}
+            aria-label="Turn Left"
+          >
+            <ArrowLeft className="h-8 w-8" />
+          </Button>
+          <Button
+            variant="destructive"
+            className="h-16 w-16 shadow-md hover:shadow-lg"
+            onClick={handleStopAll}
+            aria-label="Stop All Motors"
+          >
+            <HandMetal className="h-8 w-8" />
+          </Button>
+          <Button
+            variant="outline"
+            className="h-16 w-16 shadow-md hover:shadow-lg"
+            onMouseDown={() => handleDesktopActionStart('turn_right', 'Turn Right (Button)')}
+            onMouseUp={handleDesktopActionEnd}
+            onTouchStart={() => handleDesktopActionStart('turn_right', 'Turn Right (Button)')}
+            onTouchEnd={handleDesktopActionEnd}
+            aria-label="Turn Right"
+          >
+            <ArrowRight className="h-8 w-8" />
+          </Button>
+
+          <div /> {/* Placeholder for bottom-left */}
+          <Button
+            variant="outline"
+            className="h-16 w-16 shadow-md hover:shadow-lg"
+            onMouseDown={() => handleDesktopActionStart('backward', 'Backward (Button)')}
+            onMouseUp={handleDesktopActionEnd}
+            onTouchStart={() => handleDesktopActionStart('backward', 'Backward (Button)')}
+            onTouchEnd={handleDesktopActionEnd}
+            aria-label="Move Backward"
+          >
+            <ArrowDown className="h-8 w-8" />
+          </Button>
+          <div /> {/* Placeholder for bottom-right */}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card className="shadow-xl rounded-lg">
@@ -197,32 +363,8 @@ export default function ControlPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6 py-6 px-4 md:px-6">
-        <div className="flex w-full justify-around items-start gap-4">
-          <Joystick
-            label="L"
-            onMove={(y) => handleMotorMove('left', y)}
-            onRelease={() => handleMotorRelease('left')}
-            currentSpeed={leftMotorSpeed}
-          />
-          <Joystick
-            label="R"
-            onMove={(y) => handleMotorMove('right', y)}
-            onRelease={() => handleMotorRelease('right')}
-            currentSpeed={rightMotorSpeed}
-          />
-        </div>
-
-        <Button
-          variant="destructive"
-          className="h-16 w-40 p-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 hover:brightness-110 flex flex-col items-center justify-center mt-4 text-base"
-          onClick={handleStopAll}
-          aria-label="Stop All Motors"
-        >
-          <HandMetal className="h-7 w-7 mb-1" />
-          <span>Stop All</span>
-        </Button>
+        {renderControls()}
       </CardContent>
     </Card>
   );
 }
-
