@@ -1,62 +1,188 @@
 
 "use client";
 
-import type { ComponentPropsWithoutRef } from 'react';
-import React, { useCallback, useState } from 'react';
+import type { ComponentPropsWithoutRef, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { HandMetal, Gamepad2 } from 'lucide-react';
+import { HandMetal, Gamepad2, MoveVertical } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import type { ControlAction } from '@/types/rover';
+import { cn } from '@/lib/utils';
+
+
+interface JoystickProps {
+  onMove: (y: number) => void; // y is -1 (full backward) to 1 (full forward)
+  onRelease: () => void;
+  label: string;
+  currentSpeed: number; // -100 to 100 for display
+}
+
+const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSpeed }) => {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const knobRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const getTrackBounds = useCallback(() => {
+    if (!trackRef.current) return null;
+    return trackRef.current.getBoundingClientRect();
+  }, []);
+
+  const handleInteractionStart = (clientY: number) => {
+    const bounds = getTrackBounds();
+    if (!bounds || !knobRef.current) return;
+    setIsDragging(true);
+    processMove(clientY);
+  };
+
+  const processMove = useCallback((clientY: number) => {
+    const bounds = getTrackBounds();
+    if (!bounds || !knobRef.current) return;
+
+    let relativeY = clientY - bounds.top;
+    let y = (relativeY / bounds.height) * 2 - 1; // Normalize to -1 to 1 (bottom to top)
+    y = Math.max(-1, Math.min(1, y)); // Clamp
+
+    // Invert y because visual top is forward (positive speed), but DOM top is 0
+    const invertedY = -y; 
+    onMove(invertedY);
+
+    // Position knob: 0% is center, 50% is top, -50% is bottom from center
+    // Knob position is (1 - normalizedY) / 2 * 100% where normalizedY is -1 to 1 (DOM bottom to top)
+    // So if y is -1 (DOM bottom), knob pos is (1 - (-1)) / 2 = 100% (bottom)
+    // If y is 1 (DOM top), knob pos is (1 - 1) / 2 = 0% (top)
+    // If y is 0 (DOM center), knob pos is (1 - 0) / 2 = 50% (center)
+    knobRef.current.style.top = `${(1 - y) / 2 * 100}%`;
+
+  }, [getTrackBounds, onMove]);
+
+
+  const handleInteractionMove = (clientY: number) => {
+    if (!isDragging) return;
+    processMove(clientY);
+  };
+
+  const handleInteractionEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    onRelease();
+    if (knobRef.current) {
+      knobRef.current.style.top = '50%'; // Reset to center
+    }
+  };
+
+  // Mouse events
+  const onMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => handleInteractionStart(e.clientY);
+  const onMouseMove = (e: MouseEvent) => handleInteractionMove(e.clientY);
+  const onMouseUp = () => handleInteractionEnd();
+
+  // Touch events
+  const onTouchStart = (e: ReactTouchEvent<HTMLDivElement>) => handleInteractionStart(e.touches[0].clientY);
+  const onTouchMove = (e: TouchEvent) => handleInteractionMove(e.touches[0].clientY);
+  const onTouchEnd = () => handleInteractionEnd();
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('touchmove', onTouchMove);
+      document.addEventListener('touchend', onTouchEnd);
+    } else {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    }
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isDragging, onMouseMove, onMouseUp, onTouchMove, onTouchEnd]);
+
+
+  return (
+    <div className="flex flex-col items-center space-y-2 w-full max-w-[120px]">
+      <Label htmlFor={`joystick-${label.toLowerCase().replace(' ', '-')}`} className="text-center block font-medium text-md">
+        {label}: {Math.round(currentSpeed)}%
+      </Label>
+      <div
+        ref={trackRef}
+        id={`joystick-${label.toLowerCase().replace(' ', '-')}`}
+        className="relative w-12 h-48 bg-muted rounded-full cursor-grab active:cursor-grabbing select-none touch-none shadow-inner"
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+      >
+        <div
+          ref={knobRef}
+          className="absolute w-10 h-10 bg-primary rounded-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-md border-2 border-primary-foreground/50"
+          style={{ top: '50%' }} // Start at center
+        >
+            <MoveVertical className="w-full h-full p-2 text-primary-foreground" />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 
 export default function ControlPanel() {
   const { toast } = useToast();
-  const [leftMotorSpeed, setLeftMotorSpeed] = useState(0);
-  const [rightMotorSpeed, setRightMotorSpeed] = useState(0);
+  const [leftMotorSpeed, setLeftMotorSpeed] = useState(0); // -100 to 100
+  const [rightMotorSpeed, setRightMotorSpeed] = useState(0); // -100 to 100
 
   const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
-    // Log the command with speed if available
     console.log(`Rover action: ${action} (${label})${speed !== undefined ? ` - Speed: ${speed}%` : ''}`);
-    // In a real application, this function would translate 'action' and 'speed'
-    // into specific commands for the ESP32 (e.g., using PWM).
-    // e.g., if (action === 'left_motor_forward') { sendToEsp32Pwm('motor_left', speed, 'forward'); }
-    
     toast({
       title: "Rover Control",
       description: `Command: ${label}${speed !== undefined ? ` (Speed: ${speed}%)` : ''}`,
-      duration: 1500, // Shorter duration for control feedback
+      duration: 1500,
     });
   }, [toast]);
 
-  const handleMotorSliderChange = (motor: 'left' | 'right', newValue: number) => {
+  const handleMotorMove = (motor: 'left' | 'right', joystickY: number) => {
+    const speedPercent = Math.round(joystickY * 100);
     let action: ControlAction;
     const motorName = motor.charAt(0).toUpperCase() + motor.slice(1);
-    const currentSpeed = Math.round(newValue); // Ensure integer value
 
-    if (currentSpeed > 0) {
+    if (speedPercent > 0) {
       action = motor === 'left' ? 'left_motor_forward' : 'right_motor_forward';
-    } else if (currentSpeed < 0) {
+    } else if (speedPercent < 0) {
       action = motor === 'left' ? 'left_motor_backward' : 'right_motor_backward';
     } else {
       action = motor === 'left' ? 'left_motor_stop' : 'right_motor_stop';
     }
 
     if (motor === 'left') {
-      setLeftMotorSpeed(currentSpeed);
+      setLeftMotorSpeed(speedPercent);
     } else {
-      setRightMotorSpeed(currentSpeed);
+      setRightMotorSpeed(speedPercent);
     }
-    sendRoverCommand(action, `${motorName} Motor: ${currentSpeed}%`, Math.abs(currentSpeed));
+    sendRoverCommand(action, `${motorName} Motor: ${speedPercent}%`, Math.abs(speedPercent));
+  };
+
+  const handleMotorRelease = (motor: 'left' | 'right') => {
+    const motorName = motor.charAt(0).toUpperCase() + motor.slice(1);
+    const action: ControlAction = motor === 'left' ? 'left_motor_stop' : 'right_motor_stop';
+    
+    if (motor === 'left') {
+      setLeftMotorSpeed(0);
+    } else {
+      setRightMotorSpeed(0);
+    }
+    sendRoverCommand(action, `${motorName} Motor Stop`);
   };
 
   const handleStopAll = () => {
     sendRoverCommand("stop_all", "Stop All Motors");
     setLeftMotorSpeed(0);
     setRightMotorSpeed(0);
-    // The slider components will re-render with these new values.
+    // Joysticks will visually reset via their onRelease calling and setting knob style
+    // Or if their parent re-renders, their initial state should be center.
+    // To be safe, we might need a way to imperatively reset joystick visuals if not already handled.
+    // For now, assuming the state update and subsequent onRelease in Joystick handles it.
   };
 
 
@@ -68,38 +194,19 @@ export default function ControlPanel() {
           Control Panel
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center gap-8 py-6 px-4 md:px-6"> {/* Increased gap & padding */}
-        {/* Left Motor Slider */}
-        <div className="w-full max-w-xs space-y-3">
-          <Label htmlFor="left-motor-slider" className="text-center block font-medium text-lg">
-            Left Motor: {leftMotorSpeed}%
-          </Label>
-          <Slider
-            id="left-motor-slider"
-            min={-100}
-            max={100}
-            step={10} // Step by 10 for distinct speed levels
-            value={[leftMotorSpeed]}
-            onValueChange={(value) => handleMotorSliderChange('left', value[0])}
-            className="w-full [&>span:first-child]:h-3 [&>span>span]:h-3 [&>span>span]:bg-primary [&>span:last-child]:h-6 [&>span:last-child]:w-6 [&>span:last-child]:border-2"
-            aria-label="Left motor speed control"
+      <CardContent className="flex flex-col items-center gap-6 py-6 px-4 md:px-6">
+        <div className="flex w-full justify-around items-start gap-4">
+          <Joystick
+            label="Left Motor"
+            onMove={(y) => handleMotorMove('left', y)}
+            onRelease={() => handleMotorRelease('left')}
+            currentSpeed={leftMotorSpeed}
           />
-        </div>
-
-        {/* Right Motor Slider */}
-        <div className="w-full max-w-xs space-y-3">
-          <Label htmlFor="right-motor-slider" className="text-center block font-medium text-lg">
-            Right Motor: {rightMotorSpeed}%
-          </Label>
-          <Slider
-            id="right-motor-slider"
-            min={-100}
-            max={100}
-            step={10} // Step by 10 for distinct speed levels
-            value={[rightMotorSpeed]}
-            onValueChange={(value) => handleMotorSliderChange('right', value[0])}
-            className="w-full [&>span:first-child]:h-3 [&>span>span]:h-3 [&>span>span]:bg-primary [&>span:last-child]:h-6 [&>span:last-child]:w-6 [&>span:last-child]:border-2"
-            aria-label="Right motor speed control"
+          <Joystick
+            label="Right Motor"
+            onMove={(y) => handleMotorMove('right', y)}
+            onRelease={() => handleMotorRelease('right')}
+            currentSpeed={rightMotorSpeed}
           />
         </div>
 
@@ -116,3 +223,4 @@ export default function ControlPanel() {
     </Card>
   );
 }
+
