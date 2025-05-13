@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent, FormEvent } from 'react';
@@ -25,7 +26,11 @@ type WifiMode = 'sta' | 'ap';
 // Mock data for available networks
 const MOCK_AVAILABLE_NETWORKS = ["MyHomeNetwork_2.4G", "CoffeeShopWiFi_Public", "NeighborNet_5G_Secure", "OfficeGuest"];
 
-export default function WifiSettingsDialog() {
+export interface WifiSettingsDialogProps {
+  onIpChange: (ip: string) => void;
+}
+
+export default function WifiSettingsDialog({ onIpChange }: WifiSettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [wifiMode, setWifiMode] = useState<WifiMode>('sta');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,16 +53,14 @@ export default function WifiSettingsDialog() {
     setStaPassword('');
     setApSsid('RoverCam-Hotspot');
     setApPassword('');
-    // Do not clear availableNetworks here, allow user to reuse scan results
   }, []);
 
   const handleScanNetworks = useCallback(async () => {
     setIsScanning(true);
     console.log("Scanning for Wi-Fi networks...");
-    // Simulate API call to ESP32 to scan networks
     await new Promise(resolve => setTimeout(resolve, 1500)); 
     setAvailableNetworks(MOCK_AVAILABLE_NETWORKS);
-    setSelectedNetwork(''); // Reset selected network after new scan
+    setSelectedNetwork(''); 
     setIsScanning(false);
     toast({
       title: "Scan Complete",
@@ -66,7 +69,6 @@ export default function WifiSettingsDialog() {
   }, [toast]);
 
   useEffect(() => {
-    // Scan for networks when dialog opens in STA mode and no networks are loaded yet.
     if (isOpen && wifiMode === 'sta' && availableNetworks.length === 0 && !isScanning) {
       handleScanNetworks();
     }
@@ -75,6 +77,17 @@ export default function WifiSettingsDialog() {
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
+    if (open) {
+      // When dialog opens, ensure IP in header reflects disconnected/configuring state
+      // unless a connection is already active (currentWifiStatus might hold this info)
+      // For simplicity, we'll reset to N/A here. A more sophisticated app might
+      // try to fetch current ESP32 status.
+      onIpChange("N/A");
+      // Reset local status display if not truly connected.
+      // This part needs careful handling if we want to persist display of active connection.
+      // For now, let's assume opening the dialog means we are re-configuring.
+      setCurrentWifiStatus("Not Connected"); 
+    }
     if (!open) {
       resetForms();
     }
@@ -92,11 +105,13 @@ export default function WifiSettingsDialog() {
     }
     setIsLoading(true);
     console.log(`Attempting to connect to SSID: ${selectedNetwork} with Password: ${staPassword ? '********' : '(empty)'}`);
-    // Simulate API call to ESP32
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsLoading(false);
-    // Assume success for now
-    setCurrentWifiStatus(`Connected to ${selectedNetwork}`);
+    
+    const simulatedIp = `192.168.1.${Math.floor(Math.random() * 254) + 1}`; // Random IP for demo
+    setCurrentWifiStatus(`Connected to ${selectedNetwork} (IP: ${simulatedIp})`);
+    onIpChange(simulatedIp);
+    
     toast({
       title: "Wi-Fi Connection",
       description: `Successfully initiated connection to ${selectedNetwork}.`,
@@ -124,11 +139,13 @@ export default function WifiSettingsDialog() {
     }
     setIsLoading(true);
     console.log(`Attempting to start AP with SSID: ${apSsid} and Password: ${apPassword ? '********' : '(open)'}`);
-    // Simulate API call to ESP32
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsLoading(false);
-    // Assume success for now
-    setCurrentWifiStatus(`Hotspot "${apSsid}" Active`);
+
+    const apIp = "192.168.4.1"; // Common default AP IP
+    setCurrentWifiStatus(`Hotspot "${apSsid}" Active (IP: ${apIp})`);
+    onIpChange(apIp);
+
     toast({
       title: "Hotspot Mode",
       description: `Hotspot "${apSsid}" is now active.`,
@@ -139,7 +156,7 @@ export default function WifiSettingsDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="ml-auto h-9 w-9">
+        <Button variant="outline" size="icon" className="h-9 w-9">
           <Wifi className="h-5 w-5" />
           <span className="sr-only">Wi-Fi Settings</span>
         </Button>
@@ -151,12 +168,17 @@ export default function WifiSettingsDialog() {
             Wi-Fi Configuration
           </DialogTitle>
           <DialogDescription>
-            Manage rover Wi-Fi connection. Current Status: <span className="font-semibold text-foreground">{currentWifiStatus}</span>
+            Manage rover Wi-Fi connection. Status: <span className="font-semibold text-foreground">{currentWifiStatus}</span>
           </DialogDescription>
         </DialogHeader>
 
         <RadioGroup
-          onValueChange={(value: string) => setWifiMode(value as WifiMode)}
+          onValueChange={(value: string) => {
+            setWifiMode(value as WifiMode);
+            // When mode changes, reset IP in header as current connection (if any) is no longer valid for the new mode.
+            onIpChange("N/A");
+            setCurrentWifiStatus("Not Connected");
+          }}
           className="my-4 grid grid-cols-2 gap-4"
           value={wifiMode}
         >
