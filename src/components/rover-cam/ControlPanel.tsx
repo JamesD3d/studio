@@ -41,19 +41,22 @@ const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSp
     if (!bounds || !knobRef.current) return;
 
     let relativeY = clientY - bounds.top;
-    let y = (relativeY / bounds.height) * 2 - 1; // Normalize to -1 to 1 (bottom to top)
+    // Normalize y: -1 for top of track, 0 for center, 1 for bottom of track (DOM coordinates)
+    let y = (relativeY / bounds.height) * 2 - 1; 
     y = Math.max(-1, Math.min(1, y)); // Clamp
 
-    // Invert y because visual top is forward (positive speed), but DOM top is 0
+    // User wants up (DOM top, y = -1) to be positive speed (forward = 1 for onMove)
+    // User wants down (DOM bottom, y = 1) to be negative speed (reverse = -1 for onMove)
+    // So, invertedY = -y maps DOM coordinates to desired speed direction.
     const invertedY = -y; 
     onMove(invertedY);
 
-    // Position knob: 0% is center, 50% is top, -50% is bottom from center
-    // Knob position is (1 - normalizedY) / 2 * 100% where normalizedY is -1 to 1 (DOM bottom to top)
-    // So if y is -1 (DOM bottom), knob pos is (1 - (-1)) / 2 = 100% (bottom)
-    // If y is 1 (DOM top), knob pos is (1 - 1) / 2 = 0% (top)
-    // If y is 0 (DOM center), knob pos is (1 - 0) / 2 = 50% (center)
-    knobRef.current.style.top = `${(1 - y) / 2 * 100}%`;
+    // Position knob:
+    // If y = -1 (DOM top, forward), knob style.top should be 0%.
+    // If y = 1 (DOM bottom, reverse), knob style.top should be 100%.
+    // If y = 0 (DOM center, stop), knob style.top should be 50%.
+    // Formula: (y + 1) / 2 * 100%
+    knobRef.current.style.top = `${(y + 1) / 2 * 100}%`;
 
   }, [getTrackBounds, onMove]);
 
@@ -135,14 +138,15 @@ export default function ControlPanel() {
 
   const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
     console.log(`Rover action: ${action} (${label})${speed !== undefined ? ` - Speed: ${speed}%` : ''}`);
-    toast({
-      title: "Rover Control",
-      description: `Command: ${label}${speed !== undefined ? ` (Speed: ${speed}%)` : ''}`,
-      duration: 1500,
-    });
+    // toast({
+    //   title: "Rover Control",
+    //   description: `Command: ${label}${speed !== undefined ? ` (Speed: ${Math.round(speed)}%)` : ''}`,
+    //   duration: 1500,
+    // });
   }, [toast]);
 
   const handleMotorMove = (motor: 'left' | 'right', joystickY: number) => {
+    // joystickY is already -1 (full backward) to 1 (full forward)
     const speedPercent = Math.round(joystickY * 100);
     let action: ControlAction;
     const motorName = motor.charAt(0).toUpperCase() + motor.slice(1);
@@ -160,7 +164,8 @@ export default function ControlPanel() {
     } else {
       setRightMotorSpeed(speedPercent);
     }
-    sendRoverCommand(action, `${motorName} Motor: ${speedPercent}%`, Math.abs(speedPercent));
+    // Pass the actual speedPercent (which can be negative) to the command
+    sendRoverCommand(action, `${motorName} Motor: ${speedPercent}%`, speedPercent);
   };
 
   const handleMotorRelease = (motor: 'left' | 'right') => {
@@ -180,9 +185,6 @@ export default function ControlPanel() {
     setLeftMotorSpeed(0);
     setRightMotorSpeed(0);
     // Joysticks will visually reset via their onRelease calling and setting knob style
-    // Or if their parent re-renders, their initial state should be center.
-    // To be safe, we might need a way to imperatively reset joystick visuals if not already handled.
-    // For now, assuming the state update and subsequent onRelease in Joystick handles it.
   };
 
 
@@ -223,4 +225,3 @@ export default function ControlPanel() {
     </Card>
   );
 }
-
