@@ -14,7 +14,7 @@ body {
     --card: hsl(0 0% 20%); 
     --card-foreground: hsl(0 0% 86.7%); 
 
-    --popover: hsl(0 0% 20%); /* Changed from 15% to 20% */
+    --popover: hsl(0 0% 25%); /* Changed from 20% to 25% for better visibility */
     --popover-foreground: hsl(0 0% 86.7%); 
 
     --primary: hsl(180 100% 25.1%); 
@@ -63,3 +63,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
