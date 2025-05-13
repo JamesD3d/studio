@@ -78,14 +78,7 @@ export default function WifiSettingsDialog({ onIpChange }: WifiSettingsDialogPro
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
-      // When dialog opens, ensure IP in header reflects disconnected/configuring state
-      // unless a connection is already active (currentWifiStatus might hold this info)
-      // For simplicity, we'll reset to N/A here. A more sophisticated app might
-      // try to fetch current ESP32 status.
       onIpChange("N/A");
-      // Reset local status display if not truly connected.
-      // This part needs careful handling if we want to persist display of active connection.
-      // For now, let's assume opening the dialog means we are re-configuring.
       setCurrentWifiStatus("Not Connected"); 
     }
     if (!open) {
@@ -108,7 +101,7 @@ export default function WifiSettingsDialog({ onIpChange }: WifiSettingsDialogPro
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsLoading(false);
     
-    const simulatedIp = `192.168.1.${Math.floor(Math.random() * 254) + 1}`; // Random IP for demo
+    const simulatedIp = `192.168.1.${Math.floor(Math.random() * 254) + 1}`; 
     setCurrentWifiStatus(`Connected to ${selectedNetwork} (IP: ${simulatedIp})`);
     onIpChange(simulatedIp);
     
@@ -142,7 +135,7 @@ export default function WifiSettingsDialog({ onIpChange }: WifiSettingsDialogPro
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsLoading(false);
 
-    const apIp = "192.168.4.1"; // Common default AP IP
+    const apIp = "192.168.4.1"; 
     setCurrentWifiStatus(`Hotspot "${apSsid}" Active (IP: ${apIp})`);
     onIpChange(apIp);
 
@@ -175,7 +168,6 @@ export default function WifiSettingsDialog({ onIpChange }: WifiSettingsDialogPro
         <RadioGroup
           onValueChange={(value: string) => {
             setWifiMode(value as WifiMode);
-            // When mode changes, reset IP in header as current connection (if any) is no longer valid for the new mode.
             onIpChange("N/A");
             setCurrentWifiStatus("Not Connected");
           }}

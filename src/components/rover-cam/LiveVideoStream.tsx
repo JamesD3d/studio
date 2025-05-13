@@ -15,13 +15,13 @@ export default function LiveVideoStream() {
       <CardContent className="p-0">
         <div className="relative w-full bg-muted flex items-center justify-center 
                         aspect-video 
-                        landscape:h-[60vh] landscape:aspect-auto 
-                        lg:landscape:h-auto lg:landscape:aspect-video">
+                        landscape:h-[calc(100vh-180px)] landscape:lg:h-auto 
+                        landscape:aspect-auto landscape:lg:aspect-video">
           <Image
             src="https://picsum.photos/1280/720"
             alt="Live video stream placeholder"
             layout="fill"
-            objectFit="contain" // Use "contain" to see the whole image, "cover" to fill and crop.
+            objectFit="contain" 
             data-ai-hint="rover Mars"
             priority
           />

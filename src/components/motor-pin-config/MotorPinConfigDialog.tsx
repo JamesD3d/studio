@@ -55,8 +55,8 @@ export default function MotorPinConfigDialog() {
   const handlePinChange = (l298nPin: L298NPin, gpioPin: string) => {
     setPinMappings(prev => {
       const newMappings = { ...prev };
-      if (gpioPin === "") { // Represent unassigned as an empty string in state
-        delete newMappings[l298nPin]; // Or newMappings[l298nPin] = undefined;
+      if (gpioPin === "" || gpioPin === UNASSIGNED_PIN_VALUE) { // Treat UNASSIGNED_PIN_VALUE as unassigned
+        delete newMappings[l298nPin]; 
       } else {
         newMappings[l298nPin] = gpioPin;
       }
@@ -77,7 +77,6 @@ export default function MotorPinConfigDialog() {
     setIsLoading(true);
 
     // Validation: Check if all pins are mapped
-    // A pin is considered mapped if it has a non-empty string value.
     const allPinsMapped = L298N_PINS.every(pin => pinMappings[pin] && pinMappings[pin] !== '');
     if (!allPinsMapped) {
       toast({
@@ -90,7 +89,7 @@ export default function MotorPinConfigDialog() {
     }
 
     // Validation: Check for duplicate GPIO assignments
-    const selectedGpios = Object.values(pinMappings).filter(pin => pin); // Filter out undefined/empty strings
+    const selectedGpios = Object.values(pinMappings).filter(pin => pin); 
     const uniqueGpios = new Set(selectedGpios);
     if (selectedGpios.length !== uniqueGpios.size) {
       toast({
@@ -134,7 +133,7 @@ export default function MotorPinConfigDialog() {
           <span className="sr-only">Motor Pin Configuration</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-background">
+      <DialogContent className="sm:max-w-md bg-popover">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Cog className="h-6 w-6 text-primary" />
@@ -157,8 +156,8 @@ export default function MotorPinConfigDialog() {
               </Label>
               <div className="col-span-2">
                 <Select
-                  onValueChange={(value) => handlePinChange(l298nPin, value === UNASSIGNED_PIN_VALUE ? "" : value)}
-                  value={pinMappings[l298nPin] || UNASSIGNED_PIN_VALUE} // If pinMappings[l298nPin] is "" or undefined, use UNASSIGNED_PIN_VALUE for Select
+                  onValueChange={(value) => handlePinChange(l298nPin, value)}
+                  value={pinMappings[l298nPin] || UNASSIGNED_PIN_VALUE} 
                   disabled={isLoading}
                 >
                   <SelectTrigger id={`select-${l298nPin}`}>

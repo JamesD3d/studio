@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { ComponentPropsWithoutRef, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent, KeyboardEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { HandMetal, Gamepad2, MoveVertical, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import type { ControlAction } from '@/types/rover';
-import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -48,7 +47,12 @@ const Joystick: React.FC<JoystickProps> = ({ onMove, onRelease, label, currentSp
     const invertedY = -y; 
     onMove(invertedY);
 
-    knobRef.current.style.top = `${(y + 1) / 2 * 100}%`;
+    // Calculate knob position based on invertedY for intuitive visual feedback
+    // invertedY = 1 (forward) => knob at top (0%)
+    // invertedY = -1 (backward) => knob at bottom (100%)
+    // invertedY = 0 (neutral) => knob at middle (50%)
+    const knobPositionPercent = (1 - invertedY) / 2 * 100;
+    knobRef.current.style.top = `${knobPositionPercent}%`;
 
   }, [getTrackBounds, onMove]);
 
@@ -130,12 +134,12 @@ export default function ControlPanel() {
 
   const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
     console.log(`Rover action: ${action} (${label})${speed !== undefined ? ` - Speed: ${speed}%` : ''}`);
-    // toast({ // Keeping this commented as per previous request
-    //   title: "Rover Control",
-    //   description: `Command: ${label}${speed !== undefined ? ` (Speed: ${Math.round(speed)}%)` : ''}`,
-    //   duration: 1500,
-    // });
-  }, []);
+    toast({ 
+      title: "Rover Control",
+      description: `Command: ${label}${speed !== undefined ? ` (Speed: ${Math.round(speed)}%)` : ''}`,
+      duration: 1500,
+    });
+  }, [toast]);
 
   // Mobile Joystick Handlers
   const handleMotorMove = (motor: 'left' | 'right', joystickY: number) => {
@@ -154,7 +158,7 @@ export default function ControlPanel() {
     if (motor === 'left') setLeftMotorSpeed(speedPercent);
     else setRightMotorSpeed(speedPercent);
     
-    sendRoverCommand(action, `${motorLabel} Motor: ${speedPercent > 0 ? 'Fwd' : speedPercent < 0 ? 'Bwd' : 'Stop'} ${Math.abs(speedPercent)}%`, speedPercent);
+    sendRoverCommand(action, `${motorLabel}: ${speedPercent > 0 ? 'Fwd' : speedPercent < 0 ? 'Bwd' : 'Stop'} ${Math.abs(speedPercent)}%`, speedPercent);
   };
 
   const handleMotorRelease = (motor: 'left' | 'right') => {
@@ -164,26 +168,24 @@ export default function ControlPanel() {
     if (motor === 'left') setLeftMotorSpeed(0);
     else setRightMotorSpeed(0);
 
-    sendRoverCommand(action, `${motorLabel} Motor Stop`);
+    sendRoverCommand(action, `${motorLabel} Stop`);
   };
 
   // Desktop Button/Key Handlers
   const handleDesktopActionStart = (action: ControlAction, label: string) => {
-    if (activeDesktopCommand === action) return; // Prevent re-sending if already active
+    if (activeDesktopCommand === action) return; 
     sendRoverCommand(action, label);
     setActiveDesktopCommand(action);
   };
 
   const handleDesktopActionEnd = () => {
     if (activeDesktopCommand === null && (leftMotorSpeed !== 0 || rightMotorSpeed !==0) && !isMobile ) {
-      // This case might occur if stop_all was triggered by keyup, but a button was also pressed
-      // and then released. Ensure motors are actually stopped.
        sendRoverCommand("stop_all", "Stop All (Release)");
     } else if (activeDesktopCommand !== null){
        sendRoverCommand("stop_all", "Stop All (Release)");
     }
     setActiveDesktopCommand(null);
-    setLeftMotorSpeed(0); // Reset visual indicators if any
+    setLeftMotorSpeed(0); 
     setRightMotorSpeed(0);
   };
   
@@ -192,13 +194,12 @@ export default function ControlPanel() {
     setLeftMotorSpeed(0);
     setRightMotorSpeed(0);
     setActiveDesktopCommand(null);
-    // Joysticks will visually reset via their onRelease calling and setting knob style if they are active
   };
 
   useEffect(() => {
-    if (isMobile === false) { // Only add listeners if on desktop
+    if (isMobile === false) { 
       const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-        if (event.repeat) return; // Ignore repeated events from holding key
+        if (event.repeat) return; 
         let action: ControlAction | null = null;
         let label: string | null = null;
 
@@ -233,7 +234,6 @@ export default function ControlPanel() {
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
-         // Ensure motors stop if component unmounts or view changes while a key was pressed
         if(activeDesktopCommand) {
             sendRoverCommand("stop_all", "Stop All (Cleanup)");
         }
@@ -258,7 +258,7 @@ export default function ControlPanel() {
 
     if (isMobile) {
       return (
-        <>
+        <div className="flex flex-col items-center gap-6">
           <div className="flex w-full justify-around items-start gap-4">
             <Joystick
               label="L"
@@ -282,7 +282,7 @@ export default function ControlPanel() {
             <HandMetal className="h-7 w-7 mb-1" />
             <span>Stop All</span>
           </Button>
-        </>
+        </div>
       );
     }
 
@@ -362,7 +362,8 @@ export default function ControlPanel() {
           Control Panel
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center gap-6 py-6 px-4 md:px-6">
+      <CardContent className="flex flex-col items-center gap-6 py-6 px-4 md:px-6
+                          landscape:flex-row landscape:justify-around landscape:py-4 landscape:px-2">
         {renderControls()}
       </CardContent>
     </Card>
