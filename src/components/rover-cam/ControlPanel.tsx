@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ComponentPropsWithoutRef } from 'react';
@@ -11,14 +10,14 @@ import { ArrowUp, ArrowDown, RotateCcw, RotateCw, HandMetal, Gamepad2 } from 'lu
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { ControlAction } from '@/types/rover'; // Import the new ControlAction type
-import Joystick from './Joystick'; // Import the Joystick component
+import type { ControlAction } from '@/types/rover';
+import Joystick from './Joystick';
 
 interface ControlButtonProps extends ComponentPropsWithoutRef<typeof Button> {
-  action: ControlAction; // Use the imported ControlAction type
+  action: ControlAction;
   icon: React.ElementType;
   label: string;
-  onAction: (action: ControlAction, label: string) => void;
+  onAction: (action: ControlAction, label: string) => void; // Speed is not relevant for buttons
 }
 
 const ControlButton = ({ action, icon: Icon, label, className, onAction, ...props }: ControlButtonProps) => {
@@ -43,11 +42,11 @@ const ControlButton = ({ action, icon: Icon, label, className, onAction, ...prop
   );
 };
 
-interface ControlsProps {
+interface DesktopControlsProps {
   sendRoverCommand: (action: ControlAction, label: string) => void;
 }
 
-const DesktopControls: React.FC<ControlsProps> = ({ sendRoverCommand }) => {
+const DesktopControls: React.FC<DesktopControlsProps> = ({ sendRoverCommand }) => {
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       let action: ControlAction | null = null;
@@ -113,24 +112,46 @@ const DesktopControls: React.FC<ControlsProps> = ({ sendRoverCommand }) => {
   );
 };
 
-const MobileControls: React.FC<ControlsProps> = ({ sendRoverCommand }) => {
+interface MobileControlsProps {
+  sendRoverCommand: (action: ControlAction, label: string, speed?: number) => void;
+}
+
+const MobileControls: React.FC<MobileControlsProps> = ({ sendRoverCommand }) => {
+  const handleJoystickCommand = useCallback((motorSide: "left" | "right", direction: 'forward' | 'backward' | 'stop', speed: number) => {
+    let action: ControlAction;
+    let label: string;
+    const motorName = motorSide.charAt(0).toUpperCase() + motorSide.slice(1);
+
+    if (direction === 'forward') {
+      action = motorSide === 'left' ? 'left_motor_forward' : 'right_motor_forward';
+      label = `${motorName} Motor Forward`;
+    } else if (direction === 'backward') {
+      action = motorSide === 'left' ? 'left_motor_backward' : 'right_motor_backward';
+      label = `${motorName} Motor Backward`;
+    } else { // direction === 'stop'
+      action = motorSide === 'left' ? 'left_motor_stop' : 'right_motor_stop';
+      label = `${motorName} Motor Stop`;
+    }
+    sendRoverCommand(action, label, speed);
+  }, [sendRoverCommand]);
+
   return (
     <div className="flex flex-col items-center w-full space-y-4">
       <Alert>
         <Gamepad2 className="h-4 w-4" />
         <AlertTitle>Joystick Controls</AlertTitle>
         <AlertDescription>
-          Use joysticks for left/right motors. Press Stop for all motors.
+          Use joysticks for left/right motors. Speed is variable. Press Stop for all motors.
         </AlertDescription>
       </Alert>
       <div className="flex justify-around w-full max-w-xs items-center px-2">
-        <Joystick motorSide="left" onCommand={sendRoverCommand} />
-        <Joystick motorSide="right" onCommand={sendRoverCommand} />
+        <Joystick motorSide="left" onCommand={(dir, spd) => handleJoystickCommand("left", dir, spd)} />
+        <Joystick motorSide="right" onCommand={(dir, spd) => handleJoystickCommand("right", dir, spd)} />
       </div>
       <Button
           variant="destructive"
           className="h-16 w-32 p-2 shadow-md hover:shadow-lg transform transition-all active:scale-95 hover:brightness-110 flex flex-col items-center justify-center mt-4"
-          onClick={() => sendRoverCommand("stop_all", "Stop All Motors")}
+          onClick={() => sendRoverCommand("stop_all", "Stop All Motors")} // Speed is not applicable for stop_all from button
           aria-label="Stop All Motors"
         >
           <HandMetal className="h-6 w-6 mb-1" />
@@ -145,17 +166,17 @@ export default function ControlPanel() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  const sendRoverCommand = useCallback((action: ControlAction, label: string) => {
-    console.log(`Rover action: ${action} (${label})`);
-    // In a real application, this function would translate 'action' 
-    // into specific commands for the ESP32.
-    // e.g., if (action === 'forward') { sendToEsp32('motor_left_fwd'); sendToEsp32('motor_right_fwd'); }
-    // e.g., if (action === 'left_motor_forward') { sendToEsp32('motor_left_fwd'); }
+  const sendRoverCommand = useCallback((action: ControlAction, label: string, speed?: number) => {
+    // Log the command with speed if available
+    console.log(`Rover action: ${action} (${label})${speed !== undefined ? ` - Speed: ${speed}%` : ''}`);
+    // In a real application, this function would translate 'action' and 'speed'
+    // into specific commands for the ESP32 (e.g., using PWM).
+    // e.g., if (action === 'left_motor_forward') { sendToEsp32Pwm('motor_left', speed, 'forward'); }
     
     toast({
       title: "Rover Control",
-      description: `Command: ${label}`,
-      duration: 2000, // Shorter duration for control feedback
+      description: `Command: ${label}${speed !== undefined ? ` (Speed: ${speed}%)` : ''}`,
+      duration: 1500, // Shorter duration for control feedback
     });
   }, [toast]);
 
@@ -187,7 +208,8 @@ export default function ControlPanel() {
         {isMobile ? (
           <MobileControls sendRoverCommand={sendRoverCommand} />
         ) : (
-          <DesktopControls sendRoverCommand={sendRoverCommand} />
+          // Desktop controls don't use the speed parameter directly from buttons
+          <DesktopControls sendRoverCommand={(act, lbl) => sendRoverCommand(act, lbl)} />
         )}
       </CardContent>
     </Card>

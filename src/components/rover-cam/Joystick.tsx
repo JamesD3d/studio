@@ -1,25 +1,24 @@
-
 "use client";
 
-import type { ControlAction } from '@/types/rover';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 type JoystickProps = {
-  motorSide: "left" | "right";
-  onCommand: (action: ControlAction, label: string) => void;
+  motorSide: "left" | "right"; // Used for labeling, but command logic is now direction/speed based
+  onCommand: (direction: 'forward' | 'backward' | 'stop', speed: number) => void;
 };
+
+const JOYSTICK_SENSITIVITY_THRESHOLD = 0.15; // Percentage of travelDistance to trigger movement
 
 const Joystick: React.FC<JoystickProps> = ({ motorSide, onCommand }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [knobPosition, setKnobPosition] = useState({ y: 0 }); // y relative to center, positive is down
   const baseRef = useRef<HTMLDivElement>(null);
   
-  // Using a state for currentSentCommand to avoid sending redundant commands
-  const [currentSentCommand, setCurrentSentCommand] = useState<ControlAction | null>(null);
+  const [currentSentDirectionAndSpeed, setCurrentSentDirectionAndSpeed] = useState<{ direction: 'forward' | 'backward' | 'stop', speed: number } | null>(null);
 
-  const baseSize = 100; // px, reduced size for better fit
+  const baseSize = 100; // px
   const knobSize = 40; // px
   const travelDistance = (baseSize - knobSize) / 2; // Max distance from center
 
@@ -42,43 +41,39 @@ const Joystick: React.FC<JoystickProps> = ({ motorSide, onCommand }) => {
     
     setKnobPosition({ y: deltaY });
 
-    let command: ControlAction | null = null;
-    let label = "";
-    const motorName = motorSide.charAt(0).toUpperCase() + motorSide.slice(1);
+    let direction: 'forward' | 'backward' | 'stop';
+    // Speed is calculated as a percentage (0-100) of maximum travel
+    // deltaY is negative for up (forward), positive for down (backward)
+    let currentSpeed = Math.round(Math.abs(deltaY / travelDistance) * 100);
+    currentSpeed = Math.min(100, Math.max(0, currentSpeed)); // Clamp between 0 and 100
 
-    // Determine command based on knob position (deltaY)
+    // Determine direction based on knob position (deltaY)
     // Inverted Y: negative deltaY is up (forward), positive deltaY is down (backward)
-    if (deltaY < -travelDistance * 0.25) { // Moved significantly forward (threshold reduced)
-      command = motorSide === "left" ? "left_motor_forward" : "right_motor_forward";
-      label = `${motorName} Motor Forward`;
-    } else if (deltaY > travelDistance * 0.25) { // Moved significantly backward
-      command = motorSide === "left" ? "left_motor_backward" : "right_motor_backward";
-      label = `${motorName} Motor Backward`;
+    if (deltaY < -travelDistance * JOYSTICK_SENSITIVITY_THRESHOLD) { // Moved significantly forward
+      direction = 'forward';
+    } else if (deltaY > travelDistance * JOYSTICK_SENSITIVITY_THRESHOLD) { // Moved significantly backward
+      direction = 'backward';
     } else { // Near center, consider it a stop
-      command = motorSide === "left" ? "left_motor_stop" : "right_motor_stop";
-      label = `${motorName} Motor Stop`;
+      direction = 'stop';
+      currentSpeed = 0; // Ensure speed is 0 when stopping
     }
     
-    if (command && command !== currentSentCommand) {
-      onCommand(command, label);
-      setCurrentSentCommand(command);
+    if (direction !== currentSentDirectionAndSpeed?.direction || currentSpeed !== currentSentDirectionAndSpeed?.speed) {
+      onCommand(direction, currentSpeed);
+      setCurrentSentDirectionAndSpeed({ direction, speed: currentSpeed });
     }
-  }, [isDragging, travelDistance, motorSide, onCommand, currentSentCommand]);
+  }, [isDragging, travelDistance, onCommand, currentSentDirectionAndSpeed]);
 
   const handleInteractionEnd = useCallback(() => {
     if (!isDragging) return;
     setIsDragging(false);
     setKnobPosition({ y: 0 }); // Reset knob to center
-
-    const stopCommand = motorSide === "left" ? "left_motor_stop" : "right_motor_stop";
-    const stopLabel = `${motorSide.charAt(0).toUpperCase() + motorSide.slice(1)} Motor Stop`;
     
-    // Only send stop command if not already stopped or if it's a different stop command
-    if (currentSentCommand !== stopCommand) {
-        onCommand(stopCommand, stopLabel);
-        setCurrentSentCommand(stopCommand);
+    if (currentSentDirectionAndSpeed?.direction !== 'stop' || currentSentDirectionAndSpeed?.speed !== 0) {
+        onCommand('stop', 0); // Send stop command with 0 speed
+        setCurrentSentDirectionAndSpeed({ direction: 'stop', speed: 0 });
     }
-  }, [isDragging, motorSide, onCommand, currentSentCommand]);
+  }, [isDragging, onCommand, currentSentDirectionAndSpeed]);
   
   useEffect(() => {
     const moveHandler = (e: MouseEvent) => handleInteractionMove(e.clientY);
