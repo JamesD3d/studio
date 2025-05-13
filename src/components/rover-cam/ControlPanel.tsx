@@ -149,7 +149,7 @@ export default function ControlPanel() {
     // joystickY is already -1 (full backward) to 1 (full forward)
     const speedPercent = Math.round(joystickY * 100);
     let action: ControlAction;
-    const motorName = motor.charAt(0).toUpperCase() + motor.slice(1);
+    const motorLabel = motor === 'left' ? 'L' : 'R';
 
     if (speedPercent > 0) {
       action = motor === 'left' ? 'left_motor_forward' : 'right_motor_forward';
@@ -165,11 +165,11 @@ export default function ControlPanel() {
       setRightMotorSpeed(speedPercent);
     }
     // Pass the actual speedPercent (which can be negative) to the command
-    sendRoverCommand(action, `${motorName} Motor: ${speedPercent}%`, speedPercent);
+    sendRoverCommand(action, `${motorLabel} Motor: ${speedPercent}%`, speedPercent);
   };
 
   const handleMotorRelease = (motor: 'left' | 'right') => {
-    const motorName = motor.charAt(0).toUpperCase() + motor.slice(1);
+    const motorLabel = motor === 'left' ? 'L' : 'R';
     const action: ControlAction = motor === 'left' ? 'left_motor_stop' : 'right_motor_stop';
     
     if (motor === 'left') {
@@ -177,7 +177,7 @@ export default function ControlPanel() {
     } else {
       setRightMotorSpeed(0);
     }
-    sendRoverCommand(action, `${motorName} Motor Stop`);
+    sendRoverCommand(action, `${motorLabel} Motor Stop`);
   };
 
   const handleStopAll = () => {
@@ -199,13 +199,13 @@ export default function ControlPanel() {
       <CardContent className="flex flex-col items-center gap-6 py-6 px-4 md:px-6">
         <div className="flex w-full justify-around items-start gap-4">
           <Joystick
-            label="Left Motor"
+            label="L"
             onMove={(y) => handleMotorMove('left', y)}
             onRelease={() => handleMotorRelease('left')}
             currentSpeed={leftMotorSpeed}
           />
           <Joystick
-            label="Right Motor"
+            label="R"
             onMove={(y) => handleMotorMove('right', y)}
             onRelease={() => handleMotorRelease('right')}
             currentSpeed={rightMotorSpeed}
@@ -225,3 +225,4 @@ export default function ControlPanel() {
     </Card>
   );
 }
+
