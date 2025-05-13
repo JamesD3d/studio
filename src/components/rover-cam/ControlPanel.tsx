@@ -174,11 +174,11 @@ export default function ControlPanel() {
     // into specific commands for the ESP32 (e.g., using PWM).
     // e.g., if (action === 'left_motor_forward') { sendToEsp32Pwm('motor_left', speed, 'forward'); }
     
-    // toast({
-    //   title: "Rover Control",
-    //   description: `Command: ${label}${speed !== undefined ? ` (Speed: ${speed}%)` : ''}`,
-    //   duration: 1500, // Shorter duration for control feedback
-    // });
+    toast({
+      title: "Rover Control",
+      description: `Command: ${label}${speed !== undefined ? ` (Speed: ${speed}%)` : ''}`,
+      duration: 1500, // Shorter duration for control feedback
+    });
   }, [toast]);
 
   if (isMobile === undefined) {
