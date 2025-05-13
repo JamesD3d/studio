@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Video } from 'lucide-react';
@@ -12,13 +13,15 @@ export default function LiveVideoStream() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="aspect-video bg-muted flex items-center justify-center relative">
+        <div className="relative w-full bg-muted flex items-center justify-center 
+                        aspect-video 
+                        landscape:h-[60vh] landscape:aspect-auto 
+                        lg:landscape:h-auto lg:landscape:aspect-video">
           <Image
             src="https://picsum.photos/1280/720"
             alt="Live video stream placeholder"
-            width={1280}
-            height={720}
-            className="object-cover w-full h-full"
+            layout="fill"
+            objectFit="contain" // Use "contain" to see the whole image, "cover" to fill and crop.
             data-ai-hint="rover Mars"
             priority
           />
