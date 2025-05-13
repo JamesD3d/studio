@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ChangeEvent, FormEvent } from 'react';
@@ -56,7 +55,7 @@ export default function WifiSettingsDialog() {
     setIsScanning(true);
     console.log("Scanning for Wi-Fi networks...");
     // Simulate API call to ESP32 to scan networks
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
     setAvailableNetworks(MOCK_AVAILABLE_NETWORKS);
     setSelectedNetwork(''); // Reset selected network after new scan
     setIsScanning(false);
@@ -102,7 +101,7 @@ export default function WifiSettingsDialog() {
       title: "Wi-Fi Connection",
       description: `Successfully initiated connection to ${selectedNetwork}.`,
     });
-    setIsOpen(false);
+    setIsOpen(false); 
   };
 
   const handleApSubmit = async (e: FormEvent) => {
@@ -145,7 +144,7 @@ export default function WifiSettingsDialog() {
           <span className="sr-only">Wi-Fi Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-background">
+      <DialogContent className="sm:max-w-md bg-popover">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wifi className="h-6 w-6 text-primary" />
@@ -180,7 +179,7 @@ export default function WifiSettingsDialog() {
             </Label>
           </div>
         </RadioGroup>
-
+        
         <Separator className="my-4"/>
 
         {wifiMode === 'sta' && (
