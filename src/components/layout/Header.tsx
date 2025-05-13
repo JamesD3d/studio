@@ -1,5 +1,5 @@
 import { Rocket, Wifi } from 'lucide-react'; // Add Wifi
-import WifiSettingsDialog from '@/components/rover-cam/WifiSettingsDialog'; // Import the new dialog
+import WifiSettingsDialog from '@/components/wifi/WifiSettingsDialog'; // Import the new dialog
 
 export default function Header() {
   return (
