@@ -1,7 +1,6 @@
 import Header from "@/components/layout/Header";
 import LiveVideoStream from "@/components/rover-cam/LiveVideoStream";
 import ControlPanel from "@/components/rover-cam/ControlPanel";
-import BatteryMonitor from "@/components/rover-cam/BatteryMonitor";
 
 export default function RoverCamPage() {
   return (
@@ -14,10 +13,9 @@ export default function RoverCamPage() {
             <LiveVideoStream />
           </div>
 
-          {/* Controls and Battery Monitor in the sidebar-like column */}
+          {/* Controls in the sidebar-like column */}
           <div className="flex flex-col gap-6 lg:gap-8">
             <ControlPanel />
-            <BatteryMonitor />
           </div>
         </div>
       </main>
